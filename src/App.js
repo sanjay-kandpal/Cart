@@ -1,6 +1,9 @@
 import  React from 'react';
 import Cart from './Cart'; 
 import Navbar from './Navbar';
+import {db} from '../src/index';
+import {where,query,doc,setDoc,updateDoc,collection,getDocs,increment,deleteDoc} from 'firebase/firestore';
+
 
 class App extends React.Component{
   constructor()
@@ -8,44 +11,62 @@ class App extends React.Component{
     super();
     this.state=
     {
-      products:[
-        {
-          price: 999,
-          title: 'Mobile Phone',
-          qty: 1,
-          img: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=367&q=80',
-          id: 1
-        },
-        {
-          price: 999,
-          title: 'Watch',
-          qty: 1,
-          img: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=394&q=80',
-          id: 2
-        },
-        {
-          price: 999,
-          title: 'Graphic Card',
-          qty: 1,
-          img: 'https://images.unsplash.com/photo-1555618254-84e2cf498b01?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1171&q=80',
-          id: 3
-       }
-      ]
+      products:[],
+      loading: true
     }
+    
   }
-  handleIncreaseQuantity = (product) =>{
+  
+  componentDidMount(){
+  this.getData();
+  }
+  async getData(){
+     
+    console.log('called');
+    const collectionRef = query(collection(db,'products'),where("qty", ">=",4));
+    const dataSnapshot = await getDocs(collectionRef);
+    // console.log("daa" ,data);
+    dataSnapshot.docs.map((doc) => {
+    // doc.data() is never undefined for query doc snapshots
+    console.log(doc.data());
+   });
+
+   const products = dataSnapshot.docs.map((doc) =>{
+    const data = doc.data();
+
+    data['id'] = doc.id;
+    return data;
+   })
+   this.setState({
+    products: products,
+    loading: false
+   })
+
+  }
+  handleIncreaseQty = async(product) =>{
     console.log('Heyy please inc the qty of ',product);
     const {products} = this.state;
     const index = products.indexOf(product);
 
-    products[index].qty += 1;
+    //  products[index].qty += 1;
 
-    this.setState({
-        products: products
-    })
+    // this.setState({
+    //     products: products
+    // })
 
+    // const docRef = db.collection('products').doc(product[index].id);
+     console.log(product.id);
+    // older Method to increase a quantity in firestore
+    const updateRef = doc(db, "products", product.id);
+
+    // Atomically increment the population of the city by 50.
+     await updateDoc(updateRef, {
+        qty: increment(1)
+    });
+    this.getData();
+    
 }
-handleDecreaseQty = (product)=>{
+handleDecreaseQty = async(product)=>{
     console.log('handling decrease working properly',product);
     const {products} = this.state;
     const index = products.indexOf(product);
@@ -53,20 +74,30 @@ handleDecreaseQty = (product)=>{
     if(products[index].qty === 0)
     return;
 
-    products[index].qty -= 1;
+    // products[index].qty -= 1;
 
-    this.setState({
-        products:products
-    })
+    // this.setState({
+    //     products:products
+        
+    // })
+    const updateRef = doc(db, "products", product.id);
+
+    // Atomically increment the population of the city by 50.
+     await updateDoc(updateRef, {
+        qty: products[index].qty - 1
+    });
+    this.getData();
 
 }
-handleDeleteComp=(id)=>{
+handleDeleteComp=async(id)=>{
     console.log('handling decrease working properly',id);
- const {products} = this.state;
- const items = products.filter((item) =>item.id !== id); //[{}]
- this.setState({
-    products: items
- })
+    const {products} = this.state;
+//  const items = products.filter((item) =>item.id !== id); //[{}]
+//  this.setState({
+//     products: items
+//  })
+ await deleteDoc(doc(db, "products", id));
+ this.getData();
 }
 getCartCount= ()=>{
   const {products} = this.state;
@@ -84,21 +115,55 @@ getCartTotal=()=>{
   const {products} = this.state;
   let cartTotal = 0;
   products.map((product)=>{
-    cartTotal = cartTotal + product.qty * product.price;
-    
+    if(product.qty > 0){
+      cartTotal = cartTotal + product.qty * product.price;
+
+    }
+     return '';  
   })
   return cartTotal;
 }
+addProduct = async() =>{
+  // db
+  // .collection('products')
+  // .add({
+  //   img: '',
+  //   price: 100,
+  //   qty: 3,
+  //   title: 'Washing Machine'  
+  // })
+  // .then((docRef)=>{
+  //    console.log('product has been added',docRef)
+  // })
+  // .catch((error)=>{
+  //   console.log(error)
+  // })
+  // Newer Version
+  
+  // Add a new document in collection "cities"
+  console.log('wtf');
+await setDoc(doc(db, "products","new_id"), {
+  img: " ",
+  price: 100,
+  qty: 3,
+  title: 'Washing Machine'
+});
+   
+
+}
   render(){
-    const {products} = this.state;
+    const {products,loading} = this.state;
+    //this.getData();
     return(
      
      <div className="App">
       <Navbar count={this.getCartCount()}/> 
+      {/* <button onClick={this.addProduct} style={{padding: 20,fontSize: 20}}>Add A Producy</button> */}
       <Cart 
        products = {products}
-       onIncreaseQuantity={this.handleIncreaseQuantity} onDecreaseQty={this.handleDecreaseQty} onDeleteComp={this.handleDeleteComp}
+       onIncreaseQty={this.handleIncreaseQty} onDecreaseQty={this.handleDecreaseQty} onDeleteComp={this.handleDeleteComp}
      />
+      {loading && <h1>Loading Products ...</h1>}
      <div style={{fontSize: 20,padding: 10}}>TOTAL: {this.getCartTotal()}</div> 
     </div>
   );

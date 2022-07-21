@@ -12,7 +12,7 @@ const Cart = (props)=> {
             <CartItem 
              product={product}
              key={product.id}
-             onIncreaseQuantity={props.onIncreaseQuantity} 
+             onIncreaseQty={props.onIncreaseQty} 
              onDecreaseQty={props.onDecreaseQty} onDeleteComp={props.onDeleteComp}
             />
           )
